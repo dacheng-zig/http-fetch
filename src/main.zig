@@ -1,10 +1,44 @@
 const std = @import("std");
+const http = std.http;
 const http_fetch = @import("http_fetch");
 
 pub fn main() !void {
-    // Prints to stderr, ignoring potential errors.
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
-    try http_fetch.bufferedPrint();
+    var gpa = std.heap.GeneralPurposeAllocator(.{}).init;
+    defer _ = gpa.deinit();
+
+    var client = http.Client{ .allocator = gpa.allocator() };
+    defer client.deinit();
+
+    var result_body = std.Io.Writer.Allocating.init(gpa.allocator());
+    defer result_body.deinit();
+
+    const response = try client.fetch(.{
+        .method = http.Method.GET,
+        .location = .{ .url = "http://httpbun.com/get" },
+        .redirect_behavior = .unhandled,
+        // standard headers
+        .headers = .{
+            .accept_encoding = .default,
+            .connection = .default,
+            .user_agent = .{ .override = "zig" },
+        },
+        // extra headers
+        .extra_headers = &.{
+            .{ .name = "accept", .value = "application/json" },
+        },
+        // privileged headers
+        .privileged_headers = &.{},
+        // request payload, can be null
+        .payload = null,
+        // if the server sends a body, it will be written here
+        .response_writer = &result_body.writer,
+    });
+
+    if (response.status.class() == .success) {
+        std.debug.print("{d} {?s}, response body: {s}", .{ response.status, response.status.phrase(), result_body.written() });
+    } else {
+        std.debug.print("Error: {d} {?s}", .{ response.status, response.status.phrase() });
+    }
 }
 
 test "simple test" {
