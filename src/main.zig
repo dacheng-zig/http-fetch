@@ -8,6 +8,11 @@ pub fn main() !void {
     var client = http.Client{ .allocator = gpa.allocator() };
     defer client.deinit();
 
+    // setup proxy from ENV, using arena allocator
+    var proxy_arena = std.heap.ArenaAllocator.init(gpa.allocator());
+    defer proxy_arena.deinit();
+    try client.initDefaultProxies(proxy_arena.allocator());
+
     var result_body = std.Io.Writer.Allocating.init(gpa.allocator());
     defer result_body.deinit();
 
