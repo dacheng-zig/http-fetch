@@ -2,18 +2,18 @@ const std = @import("std");
 const http = std.http;
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}).init;
-    defer _ = gpa.deinit();
+    var dbg = std.heap.DebugAllocator(.{}).init;
+    defer _ = dbg.deinit();
 
-    var client = http.Client{ .allocator = gpa.allocator() };
+    var client = http.Client{ .allocator = dbg.allocator() };
     defer client.deinit();
 
     // setup proxy from ENV, using arena allocator
-    var proxy_arena = std.heap.ArenaAllocator.init(gpa.allocator());
+    var proxy_arena = std.heap.ArenaAllocator.init(dbg.allocator());
     defer proxy_arena.deinit();
     try client.initDefaultProxies(proxy_arena.allocator());
 
-    var result_body = std.Io.Writer.Allocating.init(gpa.allocator());
+    var result_body = std.Io.Writer.Allocating.init(dbg.allocator());
     defer result_body.deinit();
 
     const response = try client.fetch(.{
